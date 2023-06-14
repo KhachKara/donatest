@@ -3,11 +3,13 @@
 
 import telebot
 from telebot.types import Message
+from telebot import types
 from envparse import Env
 from telebot.types import Message
 import json
 import requests
 from datetime import datetime
+
 
 env = Env()
 TOKEN = env.str('TOKEN')
@@ -16,39 +18,28 @@ bot_link = env.str('bot_link')
 bot_search_name = env.str('bot_search_name')
 
 
-bot_client = telebot.TeleBot(token=TOKEN)
+bot = telebot.TeleBot(token=TOKEN)
 
 
-@bot_client.message_handler(commands=['start'])
+@bot.message_handler(commands=['start'])
 def start(message: Message):
-    with open('users.json', 'r') as f_o:
-        data_from_json = json.load(f_o)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
-    user_id = message.from_user.id
-    username = message.from_user.username
+    item1 = types.KeyboardButton('50 рублей')
+    item2 = types.KeyboardButton('200 рублей')
+    item3 = types.KeyboardButton('500 рублей')
+    item4 = types.KeyboardButton('1000 рублей')
+    markup.add(item1, item2, item3, item4)
 
-    if str(user_id) not in data_from_json:
-        data_from_json[user_id] = {'username': username}
-    with open('users.json', 'w') as f_o:
-        json.dump(data_from_json, f_o, indent=4, ensure_ascii=False)
-    bot_client.reply_to(message=message, text=f'Приветсвую {username}! Ваш userid: {user_id}')
+    bot.send_message (message.chat.id, f'Привет {message.from_user.first_name}', reply_markup=markup)
 
-
-
-def answer_handle(message: Message):
-    bot_client.reply_to(message, text='Спасибо за инвестиции')
-
-
-@bot_client.message_handler(commands=['donate'])
-def donate(message: Message):
-    bot_client.reply_to(message, text='Какой бюджет вы рассматриваете для своего проекта инвестиций?')
-    bot_client.register_next_step_handler(message, answer_handle)
+@bot.message_handler(content_types=['text'])
+def bot_message(message):
+    if message.chat.type == 'private':
+        if message.text in ['50 рублей', '200 рублей']:
+            bot.send_message(message.chat.id, 'Спасибо!')
+        else:
+            bot.send_message(message.chat.id, 'СуперСпасибо!')
 
 
-while True:
-    try:
-        bot_client.polling()
-    except JSONDecodeError as err:
-        print('Ошибка', err)
-        requests.post(f'https://core.telegram.org/bot{TOKEN}'
-                      f'/sendMessage?chat_id=42791670&text={datetime.now()} ::: {err.__class__} ::: {err}')
+bot.polling(none_stop=True)
